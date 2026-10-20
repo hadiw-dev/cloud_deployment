@@ -1,0 +1,56 @@
+# Environment files and local credentials
+.env
+.env.*
+!.env.example
+.aws/
+.agents/
+.codex/
+*.pem
+*.key
+
+# Python and packaging
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Test and lint output
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+junit*.xml
+
+# Terraform: commit .terraform.lock.hcl when generated
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfplan
+crash.log
+crash.*.log
+
+# Backups, database exports, and local artifacts
+backups/
+*.dump
+*.sql
+*.sql.gz
+*.bak
+*.backup
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+!*.tfvars.example

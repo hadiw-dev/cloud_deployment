@@ -3,7 +3,7 @@
 A beginner-friendly DevOps portfolio project: a task management API with persistent
 PostgreSQL storage, containers, automated checks, backup recovery, and local Infrastructure as Code.
 
-**Current status: Phase 1 complete. The application and deployment are not implemented yet.**
+**Current status: Phase 4 and 5 implementation is present; hosted CI and the live backup/restore drill still need verification.**
 See [PROGRESS.md](PROGRESS.md) for actual checks and the remaining phases.
 
 The project addresses a practical problem: delivering a small API repeatably, proving
@@ -25,9 +25,10 @@ flowchart LR
 ```
 
 Technology: Python 3.12+, FastAPI, PostgreSQL, SQLAlchemy 2, Alembic, Pydantic,
-Pytest, Ruff, Docker Compose, GitHub Actions, and Terraform. Dependency ranges are
-declared in `pyproject.toml`; reproducible resolved dependencies and explicit container
-versions will be established in later phases before runtime verification.
+Pytest, Ruff, Docker Compose, GitHub Actions, and Terraform. Container base images and
+Python dependency versions are pinned. The lock files target Python 3.12 on Linux and
+do not pin package artifact hashes. Refresh both lock files together whenever runtime
+or development dependencies change.
 
 ## Project structure
 
@@ -74,13 +75,12 @@ If Docker cannot connect, start Desktop and check WSL integration; do not make t
 Docker socket world-writable. Terraform installation guidance is in
 [infra/terraform/README.md](infra/terraform/README.md).
 
-Phase 2 will install the project using `python -m pip install -e '.[dev]'`.
-Phase 1 only verifies the scaffold and creates a virtual environment; it does not
-install dependencies or start a placeholder API.
+Install the locked development dependencies using `python -m pip install -r requirements-dev.lock`.
+See the Phase 3 setup below to run the API and PostgreSQL with Compose.
 
-## Environment variables (planned contract)
+## Environment variables
 
-Copy `.env.example` to `.env` before the Compose phase and choose a fresh local password.
+Copy `.env.example` to `.env` and choose a fresh local password.
 Keep the password in `DATABASE_URL` consistent with `POSTGRES_PASSWORD`.
 URL-encode special characters in the URL password. Never commit `.env`.
 
@@ -90,17 +90,21 @@ URL-encode special characters in the URL password. Never commit `.env`.
 | `POSTGRES_USER` | Local database role | `tasks_app` |
 | `POSTGRES_PASSWORD` | Local development password | Fake value in `.env.example` |
 | `DATABASE_URL` | SQLAlchemy psycopg URL | Compose hostname `db`, port `5432` |
-| `LOG_LEVEL` | Application log verbosity | `INFO` |
+| `LOG_LEVEL` | Structured application log threshold | `INFO` |
 
 The initial local PostgreSQL role will need schema-management privileges for migrations.
 A future production deployment should separate migration and application roles.
 
-## API and testing roadmap
+## API and testing
 
-Phase 2 adds `GET /health`, `GET /ready`, `GET /tasks`, `GET /tasks/{id}`,
+The API provides `GET /health`, `GET /ready`, `GET /tasks`, `GET /tasks/{id}`,
 `POST /tasks`, `PUT /tasks/{id}`, and `DELETE /tasks/{id}`.
 Tasks have id, title, description, completed, created_at, and updated_at fields.
-No endpoints can be exercised yet. Planned commands after implementation:
+PUT replaces the task: title is required; omitted description/completed reset to null/false.
+POST returns 201 with a Location header, DELETE returns 204, missing IDs return 404,
+and invalid input returns 422. Database failures return a sanitized 503.
+
+After starting the API:
 
 ```bash
 curl -f http://localhost:8000/health
@@ -114,10 +118,98 @@ python -m pytest -m integration
 ruff check .
 ```
 
-Integration tests must use a disposable PostgreSQL database. There are no tests
-yet; an empty test suite is not evidence of a working application.
+Integration tests require `TEST_DATABASE_URL` pointing to an isolated, migrated
+PostgreSQL database. They skip explicitly when it is absent and never fall back to
+`DATABASE_URL`. They create and clean up only their own task records.
 
-## Container lifecycle (available in Phase 3)
+## Phase 2 local setup (host-run API)
+
+For host-run development, use an existing disposable PostgreSQL instance or start a
+dedicated development container. The example values below are
+public, disposable development values; do not reuse them in production.
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements-dev.lock
+cp -n .env.example .env
+# Edit .env: use 127.0.0.1:55432 instead of db:5432 in DATABASE_URL.
+# Match the database, role, and password to this disposable database.
+docker run -d --name cloud-platform-phase2-db \
+  --tmpfs /var/lib/postgresql/data \
+  -e POSTGRES_DB=tasks_phase2 -e POSTGRES_USER=tasks_app \
+  -e POSTGRES_PASSWORD=phase2_disposable_only \
+  -p 127.0.0.1:55432:5432 postgres:17.6-bookworm
+docker exec cloud-platform-phase2-db pg_isready -U tasks_app -d tasks_phase2
+# Wait until pg_isready reports accepting connections.
+# .env DATABASE_URL for this example:
+# postgresql+psycopg://tasks_app:phase2_disposable_only@127.0.0.1:55432/tasks_phase2
+alembic upgrade head
+alembic current
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+The temporary PostgreSQL storage above is deliberately disposable: stopping this
+container loses its data. Phase 3 supplies the persistent named-volume deployment.
+The API never runs migrations on startup. Run `alembic upgrade head` as a separate
+controlled step before serving traffic. `alembic downgrade` can delete data and
+should only be used after deliberate review and backup.
+
+For integration tests, set `TEST_DATABASE_URL` through your shell environment
+without embedding production credentials in command history. With the disposable
+`.env` configured as above, this command safely loads the same test-only URL:
+
+```bash
+python -m pytest -m unit
+python - <<'PYTEST'
+import os
+import subprocess
+import sys
+from app.config import get_settings
+
+# Use only with the disposable development .env described above.
+os.environ["TEST_DATABASE_URL"] = get_settings().database_url.get_secret_value()
+raise SystemExit(subprocess.call([sys.executable, "-m", "pytest", "-m", "integration"]))
+PYTEST
+ruff check .
+```
+
+Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
+`/health` checks the process; `/ready` performs a database query (200 or 503).
+Readiness checks connectivity, not schema version; check `alembic current` during deployment.
+
+## Phase 3 container deployment
+
+The runtime image uses a pinned Python base image, a separate build stage, and a
+non-root user. Compose publishes the API only on `127.0.0.1`; the API connects to a
+host-facing network and a private backend network, while PostgreSQL has no host port
+and joins only the private backend. Its named volume persists across ordinary
+container recreation. `.env.example` provides disposable local values; replace the
+password and keep `DATABASE_URL` synchronized with `POSTGRES_PASSWORD`. URL-encode
+special characters in the URL password, and keep the Compose hostname as `db`.
+
+```bash
+cp -n .env.example .env
+# Edit .env and set a fresh local password in both locations.
+docker compose build
+docker compose up -d db
+docker compose run --rm migrate
+docker compose up -d api
+docker compose ps
+curl -f http://127.0.0.1:8000/health
+curl -f http://127.0.0.1:8000/ready
+```
+
+The `migrate` service runs only when explicitly requested and never runs as part of
+API startup. For later schema updates, start the database, run the migration command,
+then recreate the API as needed. The healthcheck checks process liveness; `/ready`
+checks database connectivity.
+
+If port 8000 is already in use, set `API_PORT` in `.env` to another local port.
+The `db` service uses a named volume called `postgres_data`. `docker compose down`
+preserves it; `docker compose down -v` deletes database data and should only be used
+after deliberate review and backup.
+
+## Container lifecycle
 
 ```bash
 docker compose up -d --build
@@ -128,20 +220,42 @@ docker compose down
 
 `down` removes the stack's containers and managed networks while retaining named
 volumes. `docker compose down -v` also deletes named volumes and their PostgreSQL
-data. That destructive command requires deliberate approval and a recovery plan.
-The repository currently has no Compose file or Dockerfile.
+data. Review the data impact before running it.
+
+## Phase 4 continuous integration
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` installs pinned versions from
+`requirements-dev.lock` and runs Ruff, migrations,
+unit tests, PostgreSQL integration tests, and a Docker image build on pushes, pull
+requests, and manual dispatch. CI uses a disposable PostgreSQL service and read-only
+repository permissions. No real GitHub Actions run has been checked yet. Terraform
+formatting and validation will be added once its configuration exists in Phase 6.
+Optional GHCR publishing will use minimal permissions and trusted events, separately
+from validation. Deployment to AWS will remain manual.
 
 ## Remaining operational phases
 
-Phase 4 adds CI: lint, unit tests, PostgreSQL migrations and integration tests,
-Docker image build, and Terraform formatting/validation. No real GitHub Actions
-run has been checked. Optional GHCR publishing will use minimal permissions and
-trusted events, separately from validation. Deployment to AWS will remain manual.
+## Phase 5 operations
 
-Phase 5 adds structured logs, request IDs, duration, health checks, and
-`scripts/backup.sh`, `scripts/restore.sh`, `scripts/verify.sh`. Backups will be checked
-for nonzero size and restored in an isolated database, with sample record verification.
-Protect backups, restrict access, and define retention; none will be committed.
+The API writes one JSON request log per request with request ID, method, path, status,
+and duration. A valid incoming `X-Request-ID` is preserved; invalid or missing values
+are replaced. The response returns the selected ID in `X-Request-ID`. `LOG_LEVEL` sets
+the application log threshold.
+
+Run backups from this project checkout with the Compose stack running:
+
+```bash
+scripts/backup.sh
+scripts/restore.sh backups/tasks-YYYYMMDDTHHMMSSZ.dump restore_verify_drill
+scripts/verify.sh tasks
+```
+
+`backup.sh` writes a private, archive-validated custom-format dump under `backups/`.
+`restore.sh` requires a new `restore_verify_` database name, refuses to overwrite an
+existing database, restores the archive, and verifies the schema. It leaves the
+verification database in place for inspection; remove it only after confirming the
+name and contents. Store backups with restricted access and define a retention policy;
+backup files are excluded from Git.
 
 Phase 6 adds the optional Docker network using Terraform. The Compose-only path
 will remain usable. See [infrastructure notes](infra/terraform/README.md).
@@ -163,10 +277,10 @@ infrastructure. Obtain approval and estimate costs before creating cloud resourc
 databases, load balancers, logs, and retained backups can continue incurring charges.
 Cleanup must inventory resources and retained storage before deleting anything.
 
-Known limitations: only the scaffold exists; no runtime, CI, backup, restore, or
-Terraform validation has passed yet. There is no authentication, TLS, metrics platform,
+Known limitations: containers, CI, backup/restore, and Terraform remain in later phases.
+There is no authentication, TLS, metrics platform,
 or high availability. Future improvements include those controls, recovery drills,
-dependency locking, and release promotion. Kubernetes, microservices, Redis, and a
+artifact hash verification, and release promotion. Kubernetes, microservices, Redis, and a
 frontend remain outside scope.
 
 For interview explanations, read [docs/interview-guide.md](docs/interview-guide.md).

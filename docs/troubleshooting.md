@@ -15,6 +15,8 @@ Do not delete volumes to fix startup problems.
 | Connection refused | `docker compose ps -a` | Service stopped or incorrect hostname | Use `db` inside Compose, check logs and health | `curl -f http://localhost:8000/ready` |
 | Health check failing | `docker inspect --format '{{json .State.Health}}' CONTAINER_NAME` | Check failing or process unavailable | Inspect health output and service logs | `docker compose ps` |
 | CI test failure | Read the failed job logs on GitHub | Dependency, migration, lint, or test failure | Reproduce the failed command locally using the same Python version and a disposable test database | Rerun the failed check, then the workflow |
+| Backup validation fails | `scripts/backup.sh` output | Database container stopped or dump stream failed | Check `docker compose ps` and database logs, then retry after service health recovers | Run `scripts/restore.sh` into a new `restore_verify_` database |
+| Restore target already exists | `scripts/restore.sh BACKUP restore_verify_NAME` | A prior drill left the verification database behind | Choose a new unused `restore_verify_` name; the script never overwrites a database | The script verifies the restored schema after completion |
 
 Useful host diagnostics: `ps aux`, `df -h`, `free -h`, `ss -ltnp`.
 Use `docker logs CONTAINER_NAME` for container output. On hosts with systemd-managed

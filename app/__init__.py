@@ -1,1 +1,1 @@
-"""Task management API package; implementation begins in Phase 2."""
+"""Task management API for the cloud deployment platform."""

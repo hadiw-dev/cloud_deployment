@@ -141,8 +141,10 @@ Implemented:
 - Added database verification and documented the backup and restore workflow.
 
 Verification remains pending: scripts and request logs have not been exercised against
-the running Compose stack. A successful backup/restore drill and retention policy remain
-to be completed.
+the running Compose stack. A successful backup/restore drill remains to be completed.
+README.md now documents a manual seven-day local retention policy and an off-machine
+copy recommendation for important data. Backup and restore scripts accept
+`COMPOSE_ENV_FILE`, which supports stacks started with `--env-file .env.example`.
 
 Verification update (2026-10-23):
 - `.venv/bin/ruff check .`, `docker compose --env-file .env.example config --quiet`,

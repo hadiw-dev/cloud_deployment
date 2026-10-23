@@ -21,12 +21,19 @@ fi
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_dir"
 
-docker compose exec -T db pg_restore --list < "$backup_file" > /dev/null
+compose_env_file="${COMPOSE_ENV_FILE:-.env}"
+if [[ ! -f "$compose_env_file" ]]; then
+  echo "Compose env file not found: $compose_env_file (set COMPOSE_ENV_FILE if needed)." >&2
+  exit 2
+fi
+export COMPOSE_ENV_FILE="$compose_env_file"
+
+docker compose --env-file "$compose_env_file" exec -T db pg_restore --list < "$backup_file" > /dev/null
 
 # createdb fails if the target exists; restore never drops or overwrites a database.
-docker compose exec -T db sh -c \
+docker compose --env-file "$compose_env_file" exec -T db sh -c \
   'exec createdb -U "$POSTGRES_USER" "$1"' sh "$target_database"
-docker compose exec -T db sh -c \
+docker compose --env-file "$compose_env_file" exec -T db sh -c \
   'exec pg_restore --exit-on-error --no-owner --no-privileges \
     -U "$POSTGRES_USER" -d "$1"' sh "$target_database" \
   < "$backup_file"

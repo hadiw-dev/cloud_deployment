@@ -245,17 +245,22 @@ the application log threshold.
 Run backups from this project checkout with the Compose stack running:
 
 ```bash
-scripts/backup.sh
-scripts/restore.sh backups/tasks-YYYYMMDDTHHMMSSZ.dump restore_verify_drill
-scripts/verify.sh tasks
+COMPOSE_ENV_FILE=.env.example scripts/backup.sh
+COMPOSE_ENV_FILE=.env.example scripts/restore.sh backups/tasks-YYYYMMDDTHHMMSSZ.dump restore_verify_drill
+COMPOSE_ENV_FILE=.env.example scripts/verify.sh tasks
 ```
+
+Use `COMPOSE_ENV_FILE=.env.example` when the stack was started with that file. If you
+copied the template to `.env`, the scripts use `.env` by default.
 
 `backup.sh` writes a private, archive-validated custom-format dump under `backups/`.
 `restore.sh` requires a new `restore_verify_` database name, refuses to overwrite an
 existing database, restores the archive, and verifies the schema. It leaves the
 verification database in place for inspection; remove it only after confirming the
 name and contents. Store backups with restricted access and define a retention policy;
-backup files are excluded from Git.
+backup files are excluded from Git. For this local learning project, keep the newest
+seven days of dumps and manually remove older files only after verifying a recent
+restore. Important data also needs a protected copy outside this machine.
 
 Phase 6 adds the optional Docker network using Terraform. The Compose-only path
 will remain usable. See [infrastructure notes](infra/terraform/README.md).
@@ -277,11 +282,11 @@ infrastructure. Obtain approval and estimate costs before creating cloud resourc
 databases, load balancers, logs, and retained backups can continue incurring charges.
 Cleanup must inventory resources and retained storage before deleting anything.
 
-Known limitations: containers, CI, backup/restore, and Terraform remain in later phases.
-There is no authentication, TLS, metrics platform,
-or high availability. Future improvements include those controls, recovery drills,
-artifact hash verification, and release promotion. Kubernetes, microservices, Redis, and a
-frontend remain outside scope.
+Known limitations: the hosted CI run and live backup/restore drill still need verification;
+Terraform is planned for Phase 6. There is no authentication, TLS, metrics platform,
+or high availability. Future improvements include those controls, artifact hash
+verification, and release promotion. Kubernetes, microservices, Redis, and a frontend
+remain outside scope.
 
 For interview explanations, read [docs/interview-guide.md](docs/interview-guide.md).
 Be ready to explain why a volume is not a backup, why readiness differs from liveness,

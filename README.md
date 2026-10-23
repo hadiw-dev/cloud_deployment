@@ -3,8 +3,8 @@
 A beginner-friendly DevOps portfolio project: a task management API with persistent
 PostgreSQL storage, containers, automated checks, backup recovery, and local Infrastructure as Code.
 
-**Current status: Phases 4 and 5 are implemented and verified.** GitHub Actions passed;
-the backup/restore drill and request logging were verified in Ubuntu.
+**Current status: Phases 4 and 5 are verified; Phase 6 Terraform implementation is in progress.**
+GitHub Actions passed, and the backup/restore drill and request logging were verified in Ubuntu.
 See [PROGRESS.md](PROGRESS.md) for actual checks and the remaining phases.
 
 The project addresses a practical problem: delivering a small API repeatably, proving
@@ -230,8 +230,8 @@ The GitHub Actions workflow in `.github/workflows/ci.yml` installs pinned versio
 unit tests, PostgreSQL integration tests, and a Docker image build on pushes, pull
 requests, and manual dispatch. CI uses a disposable PostgreSQL service and read-only
 repository permissions. GitHub Actions run `39995887331` completed successfully on
-2026-10-23. Terraform formatting and validation will be added once its configuration
-exists in Phase 6. Package artifact hashes are not pinned in the lock files.
+2026-10-23. Terraform formatting and validation are included in CI. Package artifact
+hashes are not pinned in the Python lock files.
 Optional GHCR publishing will use minimal permissions and trusted events, separately
 from validation. Deployment to AWS will remain manual.
 
@@ -264,8 +264,9 @@ local learning project, keep the newest
 seven days of dumps and manually remove older files only after verifying a recent
 restore. Important data also needs a protected copy outside this machine.
 
-Phase 6 adds the optional Docker network using Terraform. The Compose-only path
-will remain usable. See [infrastructure notes](infra/terraform/README.md).
+Phase 6 provides an optional Terraform-managed Docker network and a Compose override;
+the default Compose-only path remains usable. See
+[infrastructure notes](infra/terraform/README.md) for validation, plan, and apply steps.
 
 Phase 7 verifies the complete workflow and expands these instructions with actual
 commands and evidence. Monitoring currently consists only of the documented design;
@@ -284,8 +285,8 @@ infrastructure. Obtain approval and estimate costs before creating cloud resourc
 databases, load balancers, logs, and retained backups can continue incurring charges.
 Cleanup must inventory resources and retained storage before deleting anything.
 
-Known limitations: package artifact hashes are not pinned, and Terraform is planned for
-Phase 6. There is no authentication, TLS, metrics platform,
+Known limitations: Terraform plan/apply verification is pending, and package artifact
+hashes are not pinned. There is no authentication, TLS, metrics platform,
 or high availability. Future improvements include those controls, artifact hash
 verification, and release promotion. Kubernetes, microservices, Redis, and a frontend
 remain outside scope.

@@ -43,12 +43,12 @@ environment checks. Phase 2 implementation is recorded below.
 
 ## Remaining work
 
-- Phase 6: optional local Docker-network Terraform configuration and checks.
+- Phase 6: Terraform network configuration is implemented; local CLI validation and
+  plan/apply verification remain.
 - Phase 7: final documentation and project review.
 
-Phases 3-5 runtime verification is complete. Terraform formatting and validation remain
-for Phase 6; Terraform checks require installing its CLI. AWS remains optional and
-unprovisioned.
+Phases 3-5 runtime verification is complete. Phase 6 Terraform checks require installing
+its CLI. AWS remains optional and unprovisioned.
 
 At Phase 1 close, no data had been deleted, cloud resources created, images published,
 or changes pushed.
@@ -123,7 +123,7 @@ Implemented:
 
 Verification (2026-10-23): pushed commit `71df29e`; GitHub Actions run `39995887331`
 completed successfully. The workflow passed lint, migration, unit tests, PostgreSQL
-integration tests, and Docker image build. Terraform checks remain for Phase 6.
+integration tests, and Docker image build. Terraform CI checks were added in Phase 6.
 
 Dependency versions are pinned in `requirements.lock` and `requirements-dev.lock` for
 Python 3.12 on Linux. The lock files were resolved from the project's installed
@@ -160,3 +160,21 @@ Verification update (2026-10-23):
 - The backup/restore, source database, HTTP request ID, and JSON log checks passed in
   the user's Ubuntu terminal; evidence is recorded under Phase 5 above.
 - Package versions are pinned in the lock files, but artifact hashes are not.
+
+## Phase 6 — local Terraform network
+
+Implemented:
+- Added a Terraform-managed Docker bridge network for the API frontend connection,
+  with project and ownership labels. The Docker provider version is pinned to 4.6.0.
+- Added `compose.terraform.yaml`, which replaces the Compose-managed frontend network
+  with the Terraform network as an external resource. The default Compose path is unchanged.
+- Added a GitHub Actions job for Terraform formatting, provider initialization, and
+  configuration validation.
+- Documented local setup and the plan/apply/destroy sequence. Terraform apply and destroy
+  remain deliberate operator actions; no Docker network has been created by Terraform.
+
+Verification:
+- `docker compose -f compose.yaml -f compose.terraform.yaml --env-file .env.example
+  config --quiet`: passed; resolved configuration uses the external Terraform network.
+- Terraform CLI is not installed in the assistant shell, so local `fmt`, `init`,
+  `validate`, and `plan` remain to be run in Ubuntu and through GitHub Actions.

@@ -1,0 +1,4 @@
+networks:
+  frontend: !override
+    external: true
+    name: cloud-deployment-platform-terraform-frontend

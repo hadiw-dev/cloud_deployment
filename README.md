@@ -3,7 +3,8 @@
 A beginner-friendly DevOps portfolio project: a task management API with persistent
 PostgreSQL storage, containers, automated checks, backup recovery, and local Infrastructure as Code.
 
-**Current status: Phase 4 and 5 implementation is present; hosted CI and the live backup/restore drill still need verification.**
+**Current status: Phases 4 and 5 are implemented and verified.** GitHub Actions passed;
+the backup/restore drill and request logging were verified in Ubuntu.
 See [PROGRESS.md](PROGRESS.md) for actual checks and the remaining phases.
 
 The project addresses a practical problem: delivering a small API repeatably, proving
@@ -228,8 +229,9 @@ The GitHub Actions workflow in `.github/workflows/ci.yml` installs pinned versio
 `requirements-dev.lock` and runs Ruff, migrations,
 unit tests, PostgreSQL integration tests, and a Docker image build on pushes, pull
 requests, and manual dispatch. CI uses a disposable PostgreSQL service and read-only
-repository permissions. No real GitHub Actions run has been checked yet. Terraform
-formatting and validation will be added once its configuration exists in Phase 6.
+repository permissions. GitHub Actions run `39995887331` completed successfully on
+2026-10-23. Terraform formatting and validation will be added once its configuration
+exists in Phase 6. Package artifact hashes are not pinned in the lock files.
 Optional GHCR publishing will use minimal permissions and trusted events, separately
 from validation. Deployment to AWS will remain manual.
 
@@ -257,8 +259,8 @@ copied the template to `.env`, the scripts use `.env` by default.
 `restore.sh` requires a new `restore_verify_` database name, refuses to overwrite an
 existing database, restores the archive, and verifies the schema. It leaves the
 verification database in place for inspection; remove it only after confirming the
-name and contents. Store backups with restricted access and define a retention policy;
-backup files are excluded from Git. For this local learning project, keep the newest
+name and contents. Keep backups private; backup files are excluded from Git. For this
+local learning project, keep the newest
 seven days of dumps and manually remove older files only after verifying a recent
 restore. Important data also needs a protected copy outside this machine.
 
@@ -282,8 +284,8 @@ infrastructure. Obtain approval and estimate costs before creating cloud resourc
 databases, load balancers, logs, and retained backups can continue incurring charges.
 Cleanup must inventory resources and retained storage before deleting anything.
 
-Known limitations: the hosted CI run and live backup/restore drill still need verification;
-Terraform is planned for Phase 6. There is no authentication, TLS, metrics platform,
+Known limitations: package artifact hashes are not pinned, and Terraform is planned for
+Phase 6. There is no authentication, TLS, metrics platform,
 or high availability. Future improvements include those controls, artifact hash
 verification, and release promotion. Kubernetes, microservices, Redis, and a frontend
 remain outside scope.

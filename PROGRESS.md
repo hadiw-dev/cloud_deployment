@@ -43,18 +43,15 @@ environment checks. Phase 2 implementation is recorded below.
 
 ## Remaining work
 
-- Phase 3 runtime verification: image build, Compose startup, health checks, and persistence after restart.
-- Phase 4 runtime verification: real GitHub Actions execution; package artifact hashes remain unpinned.
-- Phase 5: health/readiness, structured logs, safe backup and isolated restore verification.
 - Phase 6: optional local Docker-network Terraform configuration and checks.
-- Phase 7: complete runtime verification, persistence/recovery drill, final documentation.
+- Phase 7: final documentation and project review.
 
-Deployment verification pending: image build, Compose startup, database
-health in Compose, persistence after container restart, backup/restore,
-Terraform fmt/validate, and real GitHub workflow execution. None are claimed successful.
-Terraform checks additionally require installation. AWS remains optional and unprovisioned.
+Phases 3-5 runtime verification is complete. Terraform formatting and validation remain
+for Phase 6; Terraform checks require installing its CLI. AWS remains optional and
+unprovisioned.
 
-No data deleted, cloud resources created, images published, or changes pushed.
+At Phase 1 close, no data had been deleted, cloud resources created, images published,
+or changes pushed.
 
 
 ## Phase 2 — API and PostgreSQL integration
@@ -124,8 +121,9 @@ Implemented:
   install from the matching lock file.
 - Documented workflow triggers and checks in README.md.
 
-Verification remains pending: no hosted GitHub Actions run has been observed yet.
-Terraform checks remain outstanding; Terraform configuration is planned for Phase 6.
+Verification (2026-10-23): pushed commit `71df29e`; GitHub Actions run `39995887331`
+completed successfully. The workflow passed lint, migration, unit tests, PostgreSQL
+integration tests, and Docker image build. Terraform checks remain for Phase 6.
 
 Dependency versions are pinned in `requirements.lock` and `requirements-dev.lock` for
 Python 3.12 on Linux. The lock files were resolved from the project's installed
@@ -140,8 +138,15 @@ Implemented:
   creates a new `restore_verify_` database without overwriting existing databases.
 - Added database verification and documented the backup and restore workflow.
 
-Verification remains pending: scripts and request logs have not been exercised against
-the running Compose stack. A successful backup/restore drill remains to be completed.
+Verification (2026-10-23):
+- Created and archive-validated `backups/tasks-20261023T175016Z.dump`.
+- Restored into the new `restore_verify_phase5_2` database. Verification reported
+  `tasks=1` and an Alembic revision; the original `tasks` database also verified with
+  `tasks=1` and an Alembic revision.
+- `GET /health` returned HTTP 200 and echoed `X-Request-ID: phase5-check-001`.
+- The API emitted a JSON request log containing that same request ID, method, path,
+  status code, and duration.
+
 README.md now documents a manual seven-day local retention policy and an off-machine
 copy recommendation for important data. Backup and restore scripts accept
 `COMPOSE_ENV_FILE`, which supports stacks started with `--env-file .env.example`.
@@ -150,12 +155,8 @@ Verification update (2026-10-23):
 - `.venv/bin/ruff check .`, `docker compose --env-file .env.example config --quiet`,
   `bash -n scripts/backup.sh scripts/restore.sh scripts/verify.sh`, and
   `git diff --check`: passed in the assistant shell.
-- `timeout 45 .venv/bin/python -m pytest -m unit -q` timed out without output in the
-  restricted assistant shell. This environment has previously hung during FastAPI
-  `TestClient` startup; the user's WSL unit tests passed earlier in Phase 2.
-- Docker socket access is denied in this shell, so the live backup/restore drill must
-  run from the user's Ubuntu terminal against the already-running Compose stack.
-- The GitHub Actions workflow has not run: this shell cannot reach the GitHub API, and
-  the GitHub CLI credential available here is invalid even though the user's Ubuntu
-  terminal reports a valid `hadiw-dev` login. Push from that authenticated terminal.
+- GitHub Actions run `39995887331` completed successfully on pushed commit `71df29e`,
+  including the workflow's unit and PostgreSQL integration tests and Docker image build.
+- The backup/restore, source database, HTTP request ID, and JSON log checks passed in
+  the user's Ubuntu terminal; evidence is recorded under Phase 5 above.
 - Package versions are pinned in the lock files, but artifact hashes are not.

@@ -37,7 +37,7 @@ or development dependencies change.
 ```text
 cloud-deployment-platform/
 ├── .github/workflows/       # Phase 4 workflow
-├── app/                    # Phase 2 API package
+├── app/                    # API and browser interface
 ├── docs/
 │   ├── architecture.md
 │   ├── interview-guide.md
@@ -105,6 +105,10 @@ Tasks have id, title, description, completed, created_at, and updated_at fields.
 PUT replaces the task: title is required; omitted description/completed reset to null/false.
 POST returns 201 with a Location header, DELETE returns 204, missing IDs return 404,
 and invalid input returns 422. Database failures return a sanitized 503.
+
+The task interface is available at `http://127.0.0.1:8000/`. It supports creating,
+listing, completing, filtering, and deleting tasks through the same API. The developer
+API explorer remains available at `http://127.0.0.1:8000/docs`.
 
 After starting the API:
 

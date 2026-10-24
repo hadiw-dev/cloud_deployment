@@ -6,12 +6,14 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path as FilePath
 from typing import Annotated
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Request, Response, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -146,6 +148,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session.delete(find_task(task_id, session))
         session.commit()
         return Response(status_code=204)
+
+    static_dir = FilePath(__file__).parent / "static"
+
+    @application.get("/", include_in_schema=False)
+    def frontend() -> FileResponse:
+        return FileResponse(static_dir / "index.html")
+
+    application.mount("/static", StaticFiles(directory=static_dir), name="static")
 
     return application
 

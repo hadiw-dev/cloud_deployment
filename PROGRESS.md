@@ -43,12 +43,13 @@ environment checks. Phase 2 implementation is recorded below.
 
 ## Remaining work
 
-- Phase 6: Terraform network configuration is implemented; local CLI validation and
-  plan/apply verification remain.
-- Phase 7: final documentation and project review.
+- Phase 6: Terraform formatting, provider initialization, validation, and plan review
+  remain. Formatting passes, but provider initialization is blocked by HashiCorp's
+  regional access restriction in the user's Ubuntu environment.
+- Phase 7: final review is in progress; all local checks that do not require Terraform
+  pass, while provider-dependent Terraform checks remain unavailable.
 
-Phases 3-5 runtime verification is complete. Phase 6 Terraform checks require installing
-its CLI. AWS remains optional and unprovisioned.
+Phases 3-5 runtime verification is complete. AWS remains optional and unprovisioned.
 
 At Phase 1 close, no data had been deleted, cloud resources created, images published,
 or changes pushed.
@@ -176,5 +177,31 @@ Implemented:
 Verification:
 - `docker compose -f compose.yaml -f compose.terraform.yaml --env-file .env.example
   config --quiet`: passed; resolved configuration uses the external Terraform network.
-- Terraform CLI is not installed in the assistant shell, so local `fmt`, `init`,
-  `validate`, and `plan` remain to be run in Ubuntu and through GitHub Actions.
+- At implementation time, Terraform was not installed in the assistant shell. The
+  workflow defines format, init, and validate checks, but no result for that job is
+  available yet.
+
+Update (2026-10-24): The user installed Terraform in Ubuntu/WSL. `terraform fmt -check`
+passed, but `terraform init -backend=false` could not discover the provider registry.
+Both registry endpoints returned HTTP 404 with `x-amzn-waf-reason: geo` and an explicit
+HashiCorp regional availability page. Provider installation, validation, and planning
+are therefore unavailable from this environment. Do not use a VPN, proxy, or remote
+runner to mask the region. The optional Compose-only deployment remains unaffected.
+
+## Phase 7 — final review (in progress)
+
+Reviewed the project status, Terraform instructions, CI workflow, and final README claims.
+Updated the README to distinguish completed local checks from pending Terraform CLI
+verification, and removed a duplicated Terraform state warning.
+
+Verification (2026-10-24):
+- `docker compose --env-file .env.example config --quiet` and the Terraform override
+  config both passed.
+- `.venv/bin/ruff check .`, Python compilation, `bash -n` for the operational scripts,
+  and `git diff --check` passed.
+- The user has Terraform installed in Ubuntu/WSL, but the provider registry returned a
+  regional restriction response, so initialization and downstream validation/plan
+  checks could not pass there. `gh run list` could not reach `api.github.com`, so remote
+  CI status could not be checked from the assistant shell.
+- No Terraform apply/destroy, cloud provisioning, or destructive database operation
+  was performed.

@@ -3,9 +3,10 @@
 A beginner-friendly DevOps portfolio project: a task management API with persistent
 PostgreSQL storage, containers, automated checks, backup recovery, and local Infrastructure as Code.
 
-**Current status: Phases 4 and 5 are verified; Phase 6 Terraform implementation is in progress.**
-GitHub Actions passed, and the backup/restore drill and request logging were verified in Ubuntu.
-See [PROGRESS.md](PROGRESS.md) for actual checks and the remaining phases.
+**Current status: Phases 4 and 5 are verified; Phase 6 is implemented, with Terraform CLI verification pending.**
+The backup/restore drill and request logging were verified in Ubuntu. Local configuration and
+static checks for the Phase 6 changes pass. See [PROGRESS.md](PROGRESS.md) for evidence and
+remaining checks.
 
 The project addresses a practical problem: delivering a small API repeatably, proving
 that its data survives restarts, and understanding how to diagnose and recover failures.
@@ -268,9 +269,10 @@ Phase 6 provides an optional Terraform-managed Docker network and a Compose over
 the default Compose-only path remains usable. See
 [infrastructure notes](infra/terraform/README.md) for validation, plan, and apply steps.
 
-Phase 7 verifies the complete workflow and expands these instructions with actual
-commands and evidence. Monitoring currently consists only of the documented design;
-see [troubleshooting](docs/troubleshooting.md) and [architecture](docs/architecture.md).
+Phase 7 is the final project review. The commands and evidence recorded so far are in
+[PROGRESS.md](PROGRESS.md); Terraform CLI plan verification remains pending. Monitoring
+currently consists only of the documented design; see [troubleshooting](docs/troubleshooting.md)
+and [architecture](docs/architecture.md).
 
 ## Security, future AWS approach, and limitations
 
@@ -285,8 +287,8 @@ infrastructure. Obtain approval and estimate costs before creating cloud resourc
 databases, load balancers, logs, and retained backups can continue incurring charges.
 Cleanup must inventory resources and retained storage before deleting anything.
 
-Known limitations: Terraform plan/apply verification is pending, and package artifact
-hashes are not pinned. There is no authentication, TLS, metrics platform,
+Known limitations: Terraform CLI validation and plan verification are pending, and package
+artifact hashes are not pinned. There is no authentication, TLS, metrics platform,
 or high availability. Future improvements include those controls, artifact hash
 verification, and release promotion. Kubernetes, microservices, Redis, and a frontend
 remain outside scope.
